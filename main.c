@@ -7,7 +7,7 @@
 
 int main(void)
 {
-	curr_input_state = INPUT_STATE.CRYPTO;
+	curr_input_state = CRYPTO;
 
 	__install_isr( INT_VEC_TIMER , clock_isr);
 	
@@ -17,12 +17,12 @@ int main(void)
 
 	c_puts("Done Crypto Input");
 
-	curr_input_state = INPUT_STATE.GUESS;
+	curr_input_state = GUESS;
 
 	get_guess_input();
 }
 
-void get_crypto_input()
+void get_crypto_input(void)
 {
 	while(crypto_buffer_remaining > 0)
 	{
@@ -34,13 +34,13 @@ void get_crypto_input()
 	process_crypto_input(crypto_buffer);
 }
 
-void get_guess_input()
+void get_guess_input(void)
 {
 }
 
 void process_input(char input)
 {
-	if(curr_input_state == INPUT_STATE.CRYPTO)
+	if(curr_input_state == CRYPTO)
 	{
 		if(crypto_buffer_remaining-- > 0)
 		{
@@ -49,15 +49,15 @@ void process_input(char input)
 		}
 		else
 		{
-			curr_state = INPUT_STATE.BEEP;
+			curr_input_state = BEEP;
 		}
 	}
-	else if(curr_input_state == INPUT_STATE.GUESS)
+	else if(curr_input_state == GUESS)
 	{
 	}
-	else if(curr_state == INPUT_STATE.BEEP)
+	else if(curr_state == BEEP)
 	{
-		c_putchar("\a");	
+		c_putchar('\a');	
 	}
 }
 
@@ -67,21 +67,23 @@ void process_crypto_input(char * input)
 
 	long seed;
 
-	for(int i = 0; i < CRYPTO_LENGTH / 4; i ++)
+	int i;
+
+	for(i = 0; i < CRYPTO_LENGTH / 4; i ++)
 	{
 		seed ^= *(long_input + i);
 	}
 
-	PutSeed(crypto_seed);
+	PutSeed(seed);
 }
 
 void input_output_isr(int vector , int code)
 {
 }
 
-void increment_clock_counter()
+void increment_clock_counter(void)
 {
-	if(curr_input_state == INPUT_STATE.GUESS)
+	if(curr_input_state == GUESS)
 	{
 		clock_counter++;
 		c_puts("clock interrupt");

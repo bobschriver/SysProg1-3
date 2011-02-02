@@ -15,7 +15,20 @@ int crypto_buffer_remaining;
 
 long clock_counter;
 
+
+void get_crypto_input(void);
+void get_guess_input(void);
+
+
 void process_input(char input);
+void process_crypto_input(char * input);
+void increment_clock_counter(void);
+
+
+void input_output_isr(int vector , int code);
+void clock_isr(int vector, int code);
+
+
 
 //Used to store the current input state
 enum INPUT_STATE
@@ -24,4 +37,6 @@ enum INPUT_STATE
 	BEEP,
 	CRYPTO,
 	GUESS
-} curr_state;
+};
+
+enum INPUT_STATE curr_input_state;
