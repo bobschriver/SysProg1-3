@@ -1,6 +1,7 @@
 #include "c_io.h"
 #include "rngs.h"
 #include "support.h"
+#include "x86arch.h"
 
 #define TRUE 1
 #define FALSE 0

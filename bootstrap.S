@@ -1,5 +1,5 @@
 /*
-** SCCS ID:	@(#)bootstrap.S	1.6	10/18/09
+** SCCS ID:	@(#)bootstrap.S	1.7	01/29/11
 **
 ** File:	bootstrap.S
 **
@@ -163,7 +163,7 @@ retry:
 readcont:
 	movw	$msg_dot,%si	/* print status: a dot */
 	call	dispMsg
-	cmpw	$OFFSET_LIMIT,%bx	/* have we reached the limit of the offset? */
+	cmpw	$OFFSET_LIMIT,%bx  /* have we reached the offset limit? */
 	je	adjust		/* Yes--must adjust the es register */
 	addw	$SECTOR_SIZE,%bx	/* No--just adjust the block size to */
 	jmp	readcont2	/*    the offset and continue. */
@@ -304,13 +304,13 @@ check_mem:
 	pushw	%ax
 	pushw	%ds
 	movw	$MMAP_SEGMENT, %ax
-	movw	%ax, %ds		/* Write relative to the memory map start */
-	movw	$0xE801, %ax		/* Get memory size for >64M configurations */
+	movw	%ax, %ds	  /* Write relative to the memory map start */
+	movw	$0xE801, %ax	  /* Get memory size for >64M configurations */
 	int	$0x15
-	movw	%ax, MMAP_EXT_LO	/* extended memory between 1M - 16M in K */
-	movw	%bx, MMAP_EXT_HI	/* extended memory > 16M in 64K blocks */
-	movw	%cx, MMAP_CFG_LO	/* configured memory between 1M - 16M in K */
-	movw	%dx, MMAP_CFG_HI	/* configured memory > 16M in 64K blocks */
+	movw	%ax, MMAP_EXT_LO  /* extended memory between 1M - 16M in K */
+	movw	%bx, MMAP_EXT_HI  /* extended memory > 16M in 64K blocks */
+	movw	%cx, MMAP_CFG_LO  /* configured memory between 1M - 16M in K */
+	movw	%dx, MMAP_CFG_HI  /* configured memory > 16M in 64K blocks */
 	popw	%ds
 	popw	%ax
 	ret
@@ -351,51 +351,10 @@ err_diskfail:
 
 /*
 ** Data areas.
-**
-**
-** The GDT.  This cannot be created in C because the bootstrap is not
-** linked with that code.
 */
-start_gdt:
-	.word	0,0,0,0		/* first GDT entry is always null */
-
-linear_seg:	/* limit FFFFF, base 0, R/W data seg, 32-bit 4K */
-	.word	0xFFFF	/* limit[15:0] */
-	.word	0x0000	/* base[15:0] */
-	.byte	0x00	/* base[23:16] */
-	.byte	0x92	/* access byte */
-	.byte	0xCF	/* granularity */
-	.byte	0x00	/* base[31:24] */
-
-code_seg:	/* limit FFFFF, base 0, R/E code seg, 32-bit 4K */
-	.word	0xFFFF
-	.word	0x0000
-	.byte	0x00
-	.byte	0x9A	/* 1 00 1 1010: present, prio 0, C/D, R/E code */
-	.byte	0xCF	/* 1 1 00 1111: 4K, 32-bit, 0, 0, limit[19:16] */
-	.byte	0x00
-
-data_seg:	/* limit FFFFF, base 0, R/W data seg, 32-bit 4K */
-	.word	0xFFFF
-	.word	0x0000
-	.byte	0x00
-	.byte	0x92	/* 1 00 1 0010: present, prio 0, C/D, R/W data */
-	.byte	0xCF
-	.byte	0x00
-
-stack_seg:	/* limit FFFFF, base 0, R/W data seg, 32-bit 4K */
-	.word	0xFFFF
-	.word	0x0000
-	.byte	0x00
-	.byte	0x92
-	.byte	0xCF
-	.byte	0x00
-
-end_gdt:
-gdt_len = end_gdt - start_gdt
 
 /*
-** Next, the GDTR and IDTR contents.
+** The GDTR and IDTR contents.
 */
 gdt_48:
 	.word	0x2000		/* 1024 GDT entries x 8 bytes/entry = 8192 */
@@ -404,6 +363,19 @@ gdt_48:
 idt_48:
 	.word	0x0800		/* 256 interrupts */
 	.quad	IDT_ADDRESS
+
+/*
+** Originally, the GDT contents were here.  When booting from a floppy
+** disk, that's not a problem, as all 510 available bytes of the boot
+** sector can be used.  However, when booting from a hard drive, only
+** the first 446 bytes (0x000-0x1bd) can be used, and including the GDT
+** here pushed this part of the bootstrap over that limit.  The older
+** machines in the lab (Intel D867PERL motherboards) didn't enforce
+** this when booting from a flash drive; however, the current machines
+** (Intel DG41TX motherboards) do, so the GDT contents are now in the
+** second sector of the bootstrap program.
+*/
+
 /*
 ** End of the first sector of the boot program.  The last two bytes
 ** of this sector must be AA55 in order for the disk to be recognized
@@ -443,16 +415,29 @@ switch:
 
 	movl	%cr0, %eax	/* get current CR0 */
 	orl	$1, %eax	/* set the PE bit */
-	movl	%eax, %cr0	/* and store it back.
+	movl	%eax, %cr0	/* and store it back. */
 	
 	/*
 	** We'll be in protected mode at the start of the user's code
 	** right after this jump executes.
+	**
+	** First, a byte to force 32-bit mode execution, followed by
+	** a 32-bit long jump.  The long ("far") jump loads both EIP
+	** and CS with the proper values so that when we land at the
+	** destination address in protected mode, the next instruction
+	** fetch doesn't cause a fault.
+	**
+	** The old code for this:
+	**
+	**	.byte	06xx, 0xEA
+	**	.long	TARGET_ADDRESS
+	**	.word	GDT_CODE
 	*/
 
-	.byte	0x66, 0xEA	/* 32-bit mode, jmp */
-	.long	TARGET_ADDRESS	/* target address */
-	.word	GDT_CODE		/* descriptor #2, GDT, RPL=0 */
+	.byte	0x66	/* 32-bit mode prefix */
+	.code32
+	ljmp	$GDT_CODE, $TARGET_ADDRESS
+	.code16
 
 /*
 ** Supporting code.
@@ -520,6 +505,48 @@ wait2_loop:
 	jmp     a20wait2
 wait2_exit:
 	ret
+
+/*
+** The GDT.  This cannot be created in C because the bootstrap is not
+** linked with that code.
+*/
+start_gdt:
+	.word	0,0,0,0		/* first GDT entry is always null */
+
+linear_seg:	/* limit FFFFF, base 0, R/W data seg, 32-bit 4K */
+	.word	0xFFFF	/* limit[15:0] */
+	.word	0x0000	/* base[15:0] */
+	.byte	0x00	/* base[23:16] */
+	.byte	0x92	/* access byte */
+	.byte	0xCF	/* granularity */
+	.byte	0x00	/* base[31:24] */
+
+code_seg:	/* limit FFFFF, base 0, R/E code seg, 32-bit 4K */
+	.word	0xFFFF
+	.word	0x0000
+	.byte	0x00
+	.byte	0x9A	/* 1 00 1 1010: present, prio 0, C/D, R/E code */
+	.byte	0xCF	/* 1 1 00 1111: 4K, 32-bit, 0, 0, limit[19:16] */
+	.byte	0x00
+
+data_seg:	/* limit FFFFF, base 0, R/W data seg, 32-bit 4K */
+	.word	0xFFFF
+	.word	0x0000
+	.byte	0x00
+	.byte	0x92	/* 1 00 1 0010: present, prio 0, C/D, R/W data */
+	.byte	0xCF
+	.byte	0x00
+
+stack_seg:	/* limit FFFFF, base 0, R/W data seg, 32-bit 4K */
+	.word	0xFFFF
+	.word	0x0000
+	.byte	0x00
+	.byte	0x92
+	.byte	0xCF
+	.byte	0x00
+
+end_gdt:
+gdt_len = end_gdt - start_gdt
 
 /*
 ** The end of this program will contain a list of the sizes and load

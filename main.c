@@ -8,10 +8,11 @@
 int main(void)
 {
 	curr_input_state = CRYPTO;
+	crypto_buffer_remaining = CRYPTO_LENGTH;	
 
 	__install_isr( INT_VEC_TIMER , clock_isr);
 	
-	c_puts("Enter Crypto Input");
+	c_puts("Enter Crypto Input\n");
 
 	get_crypto_input();
 
@@ -26,9 +27,12 @@ void get_crypto_input(void)
 {
 	while(crypto_buffer_remaining > 0)
 	{
+		c_puts("before enter character\n");
 		char input = c_getchar();
+		c_puts("after enter character\n");
+		
+		//c_putchar(input);
 		process_input(input);
-		c_putchar(input);
 	}
 
 	process_crypto_input(crypto_buffer);
@@ -36,14 +40,16 @@ void get_crypto_input(void)
 
 void get_guess_input(void)
 {
+	while(1);
 }
 
 void process_input(char input)
 {
 	if(curr_input_state == CRYPTO)
 	{
-		if(crypto_buffer_remaining-- > 0)
+		if(crypto_buffer_remaining > 0)
 		{
+			crypto_buffer_remaining--;
 			next_input_char = input;
 			next_input_char++;
 		}
@@ -55,7 +61,7 @@ void process_input(char input)
 	else if(curr_input_state == GUESS)
 	{
 	}
-	else if(curr_state == BEEP)
+	else if(curr_input_state == BEEP)
 	{
 		c_putchar('\a');	
 	}
@@ -74,6 +80,8 @@ void process_crypto_input(char * input)
 		seed ^= *(long_input + i);
 	}
 
+	c_printf("o" , seed);
+	
 	PutSeed(seed);
 }
 
