@@ -102,8 +102,8 @@ static void __default_expected_handler( int vector, int code ){
 **		interrupt whose source has not been identified.
 */
 static void __default_mystery_handler( int vector, int code ){
-	c_printf( "\nMystery interrupt!\nVector=0x%02x, code=%d\n",
-		  vector, code );
+	//c_printf( "\nMystery interrupt!\nVector=0x%02x, code=%d\n",
+		  //vector, code );
 	__outb( PIC_MASTER_CMD_PORT, PIC_EOI );
 }
 

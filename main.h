@@ -2,6 +2,7 @@
 #include "rngs.h"
 #include "support.h"
 #include "x86arch.h"
+#include "startup.h"
 
 #define TRUE 1
 #define FALSE 0

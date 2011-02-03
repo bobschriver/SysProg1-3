@@ -11,12 +11,14 @@ int main(void)
 	crypto_buffer_remaining = CRYPTO_LENGTH;	
 
 	__install_isr( INT_VEC_TIMER , clock_isr);
+
+	asm("sti");
 	
 	c_puts("Enter Crypto Input\n");
 
-	get_crypto_input();
+	//get_crypto_input();
 
-	c_puts("Done Crypto Input");
+	c_puts("Done Crypto Input\n");
 
 	curr_input_state = GUESS;
 
@@ -40,7 +42,10 @@ void get_crypto_input(void)
 
 void get_guess_input(void)
 {
-	while(1);
+	while(1)
+	{
+		//c_puts("waiting for interrupts\n");
+	}
 }
 
 void process_input(char input)
@@ -50,7 +55,7 @@ void process_input(char input)
 		if(crypto_buffer_remaining > 0)
 		{
 			crypto_buffer_remaining--;
-			next_input_char = input;
+			*next_input_char = input;
 			next_input_char++;
 		}
 		else
@@ -80,7 +85,7 @@ void process_crypto_input(char * input)
 		seed ^= *(long_input + i);
 	}
 
-	c_printf("o" , seed);
+	c_printf("%o" , seed);
 	
 	PutSeed(seed);
 }
@@ -94,13 +99,15 @@ void increment_clock_counter(void)
 	if(curr_input_state == GUESS)
 	{
 		clock_counter++;
-		c_puts("clock interrupt");
+		c_puts("clock interrupt\n");
 	}
 }
 
 void clock_isr(int vector, int code)
 {
 	increment_clock_counter();
+	__outb( PIC_SLAVE_CMD_PORT , PIC_EOI );
+	c_printf("%o %o\n" , vector , code);
 }
 
 

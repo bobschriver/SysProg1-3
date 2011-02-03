@@ -183,3 +183,11 @@ depend:
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
+bootstrap.o: bootstrap.h
+startup.o: bootstrap.h
+isr_stubs.o: bootstrap.h
+c_io.o: c_io.h startup.h support.h /home/fac/wrc/include/x86arch.h
+rngs.o: rngs.h
+support.o: startup.h support.h c_io.h /home/fac/wrc/include/x86arch.h
+support.o: bootstrap.h
+main.o: main.h c_io.h rngs.h support.h /home/fac/wrc/include/x86arch.h
